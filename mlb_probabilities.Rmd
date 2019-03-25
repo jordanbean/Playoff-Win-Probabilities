@@ -1,0 +1,239 @@
+---
+title: "MLB Probabilities"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+all_seasons <- data.frame()
+
+for (i in 1990:2018) {
+  df <- read_delim(paste('...\\Game Data\\GL', as.character(i), '.txt', sep = ''), delim = ',', col_names = FALSE)
+  
+  cols_to_keep <- c(0,2:10, 12, 16:18, 21:26, 30, 32, 38, 49:54, 58, 60, 66)
+  cols_to_keep <- cols_to_keep + 1
+  df = df[, cols_to_keep]
+
+  cols = c('Date','Day_of_week','Visitor','V_league','V_game_num','Home','H_league','H_game_num','V_score','H_score','Time_of_day','Park','Attendance','Game_time','V_atbats','V_hits','V_doubles','V_triples','V_hr','V_rbi','V_bb','V_strikeouts','V_pitchersused','H_atbats','H_hits','H_doubles','H_triples','H_hr','H_rbi','H_bb','H_strikeouts','H_pitchersused')
+
+  colnames(df) <- cols
+
+  df$Date <- as.Date(as.character(df$Date), format = '%Y%m%d')
+  
+  df$Year <- i
+  
+  all_seasons <- rbind(all_seasons, df)
+}
+```
+
+```{r}
+head(all_seasons)
+tail(all_seasons)
+```
+
+```{r}
+playoff_teams <- read.csv('...\mlb_playoff_teams.csv')
+playoff_teams$postseason <- as.character(playoff_teams$postseason)
+playoff_teams$team <- as.character(playoff_teams$team)
+playoff_teams$world_series <- as.character(playoff_teams$world_series)
+```
+
+```{r}
+head(playoff_teams)
+```
+
+```{r}
+sort(unique(playoff_teams$team))
+```
+
+```{r}
+sort(unique(all_seasons$Home))
+```
+
+```{r}
+all_seasons[all_seasons$Home == 'ANA','Home'] <- 'LAA'
+all_seasons[all_seasons$Visitor == 'ANA','Visitor'] <- 'LAA'
+
+all_seasons[all_seasons$Home == 'CAL','Home'] <- 'LAA'
+all_seasons[all_seasons$Visitor == 'CAL','Visitor'] <- 'LAA'
+
+all_seasons[all_seasons$Home == 'CHA','Home'] <- 'CHW'
+all_seasons[all_seasons$Visitor == 'CHA','Visitor'] <- 'CHW'
+
+all_seasons[all_seasons$Home == 'CHN','Home'] <- 'CHC'
+all_seasons[all_seasons$Visitor == 'CHN','Visitor'] <- 'CHC'
+
+all_seasons[all_seasons$Home == 'FLO','Home'] <- 'MIA'
+all_seasons[all_seasons$Visitor == 'FLO','Visitor'] <- 'MIA'
+
+all_seasons[all_seasons$Home == 'KCA','Home'] <- 'KCR'
+all_seasons[all_seasons$Visitor == 'KCA','Visitor'] <- 'KCR'
+
+all_seasons[all_seasons$Home == 'LAN','Home'] <- 'LAD'
+all_seasons[all_seasons$Visitor == 'LAN','Visitor'] <- 'LAD'
+
+all_seasons[all_seasons$Home == 'MON','Home'] <- 'WSN'
+all_seasons[all_seasons$Visitor == 'MON','Visitor'] <- 'WSN'
+
+all_seasons[all_seasons$Home == 'NYA','Home'] <- 'NYY'
+all_seasons[all_seasons$Visitor == 'NYA','Visitor'] <- 'NYY'
+
+all_seasons[all_seasons$Home == 'NYN','Home'] <- 'NYM'
+all_seasons[all_seasons$Visitor == 'NYN','Visitor'] <- 'NYM'
+
+all_seasons[all_seasons$Home == 'SDN','Home'] <- 'SDP'
+all_seasons[all_seasons$Visitor == 'SDN','Visitor'] <- 'SDP'
+
+all_seasons[all_seasons$Home == 'SFN','Home'] <- 'SFG'
+all_seasons[all_seasons$Visitor == 'SFN','Visitor'] <- 'SFG'
+
+all_seasons[all_seasons$Home == 'SLN','Home'] <- 'STL'
+all_seasons[all_seasons$Visitor == 'SLN','Visitor'] <- 'STL'
+
+all_seasons[all_seasons$Home == 'WAS','Home'] <- 'WSN'
+all_seasons[all_seasons$Visitor == 'WAS','Visitor'] <- 'WSN'
+
+all_seasons[all_seasons$Home == 'TBA','Home'] <- 'TBR'
+all_seasons[all_seasons$Visitor == 'TBA','Visitor'] <- 'TBR'
+```
+
+```{r}
+sort(unique(playoff_teams$team))
+```
+
+```{r}
+sort(unique(all_seasons$Home))
+```
+
+
+```{r}
+all_seasons$winner <- if_else(all_seasons$H_score > all_seasons$V_score, all_seasons$Home, all_seasons$Visitor)
+all_seasons$loser <- if_else(all_seasons$H_score < all_seasons$V_score, all_seasons$Home, all_seasons$Visitor)
+```
+
+```{r}
+all_seasons %>%
+  select(Home, Visitor, H_game_num, V_game_num, H_score, V_score, Year, winner, loser) -> all_seasons
+```
+
+```{r}
+all_seasons <- all_seasons %>%
+  filter(H_game_num < 163, V_game_num < 163)
+```
+
+```{r}
+wins_winner <- c()
+
+for(i in 1990:2018) {
+  
+  filtered <- all_seasons %>%
+                  filter(Year == i)
+  
+  cum_wins_winner <- ave(filtered$winner,filtered$winner, FUN= seq.int)
+
+  wins_winner = c(wins_winner, cum_wins_winner)
+  
+}
+```
+
+```{r}
+all_seasons$num_wins_winner <- as.integer(wins_winner)
+
+```
+
+```{r}
+head(all_seasons, 100)
+```
+
+```{r}
+num_losses_loser <- c()
+
+for(i in 1990:2018) {
+  
+  filtered <- all_seasons %>%
+                  filter(Year == i)
+  
+  cum_losses_loser <- ave(filtered$loser,filtered$loser, FUN= seq.int)
+
+  num_losses_loser = c(num_losses_loser, cum_losses_loser)
+  
+}
+
+all_seasons$num_losses_loser <- as.integer(num_losses_loser)
+all_seasons$num_wins_loser <- as.integer(if_else(all_seasons$loser == all_seasons$Home, all_seasons$H_game_num - all_seasons$num_losses_loser, all_seasons$V_game_num - all_seasons$num_losses_loser))
+```
+
+```{r}
+all_seasons
+```
+
+```{r}
+wins_df <- data_frame()
+
+for (team in unique(all_seasons$Home)) {
+  
+  team_df <- filter(all_seasons, all_seasons$Home == team | all_seasons$Visitor == team)
+  
+  team_df$game_num <- if_else(team_df$Home == team, team_df$H_game_num, team_df$V_game_num)
+  
+  team_df$num_wins_team <- if_else(team_df$winner == team, team_df$num_wins_winner, team_df$num_wins_loser)
+  
+  team_df$team <- team
+  
+  team_df %>% 
+    select(team, Year, game_num, num_wins_team) -> team_df
+  
+  wins_df <- rbind(wins_df, team_df)
+}
+```
+
+```{r}
+playoff_flag <- c()
+
+for (i in 1:nrow(wins_df)) {
+  row_team <- as.character(wins_df[i,'team'])
+  row_year <- as.character(wins_df[i,'Year'])
+  
+  playoff_team <- playoff_teams[playoff_teams$team == row_team,]
+  
+  playoffs <- if_else(grepl(row_year, playoff_team$postseason),1,0)
+  
+  playoff_flag <- c(playoff_flag, playoffs)
+}
+```
+
+```{r}
+wins_df$playoff_flag <- playoff_flag
+```
+
+```{r}
+wins_df %>%
+  group_by(Year, game_num) %>%
+  mutate(wins_above_mean = num_wins_team - mean(num_wins_team)) -> wins_df
+```
+
+```{r}
+wins_df
+```
+
+```{r}
+write_csv(wins_df, '...\wins_df.csv')
+```
+
+```{r}
+wins_df %>%
+  group_by(game_num, playoff_flag) %>%
+  summarize(mean_wins_playoff = mean(num_wins_team),
+            percentile_25 = quantile(num_wins_team, 0.25),
+            percentile_75 = quantile(num_wins_team, 0.75)) -> mean_win_difference
+```
+
+```{r}
+write_csv(mean_win_difference, '...\mean_win_difference.csv')
+```
+
